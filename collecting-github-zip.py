@@ -32,7 +32,9 @@ user = 'YA-androidapp'
 url_top = 'https://github.com'
 url_usertop = url_top + '/'+user+'?tab=repositories'
 
-url_archive = '/archive/master.zip'
+url_archive_pre = '/archive/'
+url_archive_post = '.zip'
+url_branch = '/branches'
 
 max = 3
 
@@ -77,14 +79,34 @@ for i in range(0, max, 1):
                     print('\t' + url_top + html_item_link + '\t' +
                           html_item_title + '\t' + html_item_desc, end='')
 
+                    try:
+                        request = urllib.request.urlopen(url_top + html_item_link + url_branch)
+                        if(request.getcode() == 404):
+                            exit
+                        else:
+                            html_post = request.read()
+                            guess = chardet.detect(html_post)
+                            html_post = html_post.decode(guess['encoding'])
+                            soup = bs4.BeautifulSoup(html_post, 'lxml')
+                
+                            branch_list = soup.find_all('a', class_='branch-name css-truncate-target')
+                            if(len(branch_list) > 0):
+                                for branch_item in branch_list:
+                                    try:
+                                        branch_title = branch_item.text
+                                    except:
+                                        branch_title = 'master'
+                
+                                    print('\t' + branch_title, end='')
+                
                     html_item_fname = html_item_link.replace('/', '_')[1:]
-                    html_item_fname += '_master.zip'  # masterブランチを狙いに行くので、gh-pagesしか切っていない場合に失敗する
+                                    html_item_fname += '_' + branch_title + '.zip'
 
                     is_failure = 'true'
                     try:
                         headers = {'Referer': url_top + html_item_link}
                         req = urllib.request.Request(
-                            url_top + html_item_link + url_archive, headers=headers)
+                                            url_top + html_item_link + url_archive_pre + branch_title + url_archive_post, headers=headers)
                         with urllib.request.urlopen(req) as response:
                             with open(html_item_fname, 'wb') as f:
                                 f.write(response.read())
@@ -92,15 +114,21 @@ for i in range(0, max, 1):
                     except:
                         print(sys.exc_info())
 
-                    print('\t' + is_failure + '\n', end='')
+                                    print('\t' + is_failure, end='')
 
                     try:
                         file_list_txt = open('list.txt', 'a')
                         file_list_txt.write(
-                            url_top + html_item_link + '\t' + html_item_title + '\t' + html_item_desc + '\t' + is_failure + '\n')
+                                            url_top + html_item_link + '\t' + html_item_title + '\t' + html_item_desc + '\t' + is_failure)
                         file_list_txt.close()
                     except:
                         print(sys.exc_info())
+                    except:
+                        print(sys.exc_info())
+                    
+                    print('\n', end='')
+                    
+                    
     except:
         print(sys.exc_info())
     finally:
